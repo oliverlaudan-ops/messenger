@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messenger</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <meta name="theme-color" content="#667eea">
+</head>
+<body>
+  <div class="container">
+    <!-- Login Screen -->
+    <div id="loginScreen">
+      <div class="header">
+        <h1>💬 Messenger</h1>
+      </div>
+      <div class="content">
+        <div class="form-group">
+          <label for="loginEmail">E-Mail</label>
+          <input id="loginEmail" type="email" placeholder="deine@email.de" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Passwort</label>
+          <input id="loginPassword" type="password" placeholder="Mindestens 8 Zeichen" autocomplete="current-password">
+        </div>
+        <div id="loginError" class="error hidden"></div>
+        <button class="btn btn-primary" onclick="login()">Einloggen</button>
+        <button class="btn btn-secondary" onclick="showRegister()">Neues Konto erstellen</button>
+      </div>
+    </div>
+
+    <!-- Register Screen -->
+    <div id="registerScreen" class="hidden">
+      <div class="header">
+        <h1>🚀 Registrierung</h1>
+      </div>
+      <div class="content">
+        <div class="form-group">
+          <label for="registerEmail">E-Mail</label>
+          <input id="registerEmail" type="email" placeholder="deine@email.de" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="registerUsername">Benutzername</label>
+          <input id="registerUsername" type="text" placeholder="coolername123" maxlength="24" autocomplete="username">
+          <small>3-24 Zeichen, Kleinbuchstaben/Zahlen/_</small>
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Passwort</label>
+          <input id="registerPassword" type="password" placeholder="Mindestens 8 Zeichen" autocomplete="new-password">
+        </div>
+        <div id="registerError" class="error hidden"></div>
+        <button class="btn btn-primary" onclick="register()">Registrieren</button>
+        <button class="btn btn-secondary" onclick="showLogin()">Zurück zum Login</button>
+      </div>
+    </div>
+
+    <!-- Main Chat Screen -->
+    <div id="chatScreen" class="hidden">
+      <div class="header">
+        <h1>💬 Messenger</h1>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span id="userInfo" class="user-info-header"></span>
+          <button type="button" id="themeToggle" onclick="toggleDarkMode()" title="Dark Mode umschalten">🌙</button>
+          <button id="notifyBtn" onclick="requestNotifications()"
+                  style="background: none; border: none; font-size: 24px; cursor: pointer; padding: 5px;"
+                  title="Benachrichtigungen aktivieren">🔔</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="dm-list-header">
+          <h3>👥 Deine Gruppen</h3>
+          <button class="btn btn-primary btn-small" onclick="showCreateGroup()">+ Neue Gruppe</button>
+        </div>
+
+        <!-- Group List View -->
+        <div id="groupListView">
+          <div id="groupList" class="dm-chat-list">
+            <div class="spinner"></div>
+          </div>
+        </div>
+
+        <!-- Group Chat View -->
+        <div id="groupChatView" class="hidden">
+          <div class="chat-header dm-chat-header">
+            <button class="back-btn" onclick="closeGroupChat()">←</button>
+            <div class="dm-chat-info">
+              <h3 id="groupChatName"></h3>
+              <small id="groupChatMembers" style="color: #888; font-size: 12px;"></small>
+            </div>
+          </div>
+          <div id="groupMessages"></div>
+          <div class="input-group">
+            <input id="groupMessageInput" type="text" placeholder="Nachricht schreiben..."
+                   onkeypress="if(event.key==='Enter') sendGroupMessage()">
+            <button class="btn btn-primary" onclick="sendGroupMessage()">Senden</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-footer">
+        <button class="btn btn-danger btn-small" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Group Modal -->
+  <div id="createGroupModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>👥 Neue Gruppe erstellen</h2>
+        <button class="close-btn" onclick="closeCreateGroup()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="groupNameInput">Gruppenname</label>
+          <input id="groupNameInput" type="text" placeholder="z.B. Team Chat" maxlength="64">
+        </div>
+        <div class="form-group">
+          <label for="groupDescInput">Beschreibung (optional)</label>
+          <textarea id="groupDescInput" placeholder="Worum geht es?" maxlength="500" rows="3"></textarea>
+        </div>
+        <div id="createGroupError" class="error hidden"></div>
+        <button class="btn btn-primary" onclick="createGroup()">Gruppe erstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch((e) => console.error("SW register failed", e));
+      });
+    }
+  </script>
+</body>
+</html>

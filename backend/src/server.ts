@@ -31,12 +31,14 @@ const fastify = Fastify({
 
 // CORS — allow frontend origin in dev (GitHub Pages historically, now self-hosted)
 // In production both are on messenger.future-pulse.de so CORS is same-origin.
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS ?? "https://*.future-pulse.de,http://127.0.0.1:*,http://localhost:*").split(",");
 await fastify.register(cors, {
   origin: (origin, cb) => {
     // Allow no-origin (curl, server-to-server) and any *.future-pulse.de
     if (!origin) return cb(null, true);
-    if (/^https:\/\/([a-z0-9-]+\.)?future-pulse\.de$/i.test(origin)) {
-      return cb(null, true);
+    for (const pattern of ALLOWED_ORIGINS) {
+      const re = new RegExp("^" + pattern.trim().replace(/\*/g, "[^/]+").replace(/\./g, "\\.") + "$");
+      if (re.test(origin)) return cb(null, true);
     }
     return cb(new Error("CORS: origin not allowed"), false);
   },
