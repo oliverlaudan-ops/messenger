@@ -12,6 +12,8 @@ import authenticatePlugin from "./plugins/authenticate.js";
 import { authRoutes } from "./routes/auth.js";
 import { groupRoutes } from "./routes/groups.js";
 import { messageRoutes } from "./routes/messages.js";
+import { pushRoutes } from "./routes/push.js";
+import { initPush } from "./push.js";
 import { setIO } from "./realtime/socket.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -72,6 +74,10 @@ await fastify.register(authRoutes, { prefix: "/api/auth" });
 // Group + Message routes
 await fastify.register(groupRoutes, { prefix: "/api/groups" });
 await fastify.register(messageRoutes, { prefix: "/api/groups" });
+await fastify.register(pushRoutes, { prefix: "/api/push" });
+
+// Web-Push initialisieren (VAPID-Keys)
+initPush();
 // Socket.IO — JWT verified in `io.use` middleware
 const io = new SocketIOServer(server, {
   cors: {

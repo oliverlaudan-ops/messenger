@@ -7,6 +7,7 @@ import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { broadcastToGroup } from "../realtime/socket.js";
+import { pushToOfflineUsers } from "../push.js";
 
 const sendMessageSchema = z.object({
   text: z.string().min(1).max(4000).trim(),
@@ -81,6 +82,29 @@ export const messageRoutes: FastifyPluginAsync = async (app: FastifyInstance) =>
 
       // Realtime-Broadcast an alle Member (außer dem Sender, der hat's schon)
       broadcastToGroup(groupId, "message:new", message);
+
+      // Web-Push an Offline-Member
+      // Group-Namen für Title brauchen wir
+      const group = await prisma.group.findUnique({
+        where: { id: groupId },
+        select: { name: true, members: { select: { userId: true } } },
+      });
+      if (group) {
+        const offlineTargets = group.members
+          .map((m) => m.userId)
+          .filter((uid) => uid !== userId);
+        const author = message.author;
+        const preview = message.text.length > 80
+          ? message.text.slice(0, 77) + "…"
+          : message.text;
+        await pushToOfflineUsers(offlineTargets, {
+          title: `👥 ${group.name}`,
+          body: `${author.username}: ${preview}`,
+          url: `/groups/${groupId}`,
+          chatId: groupId,
+          chatType: "group",
+        });
+      }
 
       return reply.code(201).send({ message });
     },
