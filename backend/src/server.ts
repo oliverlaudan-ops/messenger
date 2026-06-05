@@ -1,6 +1,6 @@
 // Fastify + Socket.IO bootstrap
 // Wires up: CORS, JWT auth, Prisma, REST health route, Socket.IO server
-// Real-time channels (group messages, DMs) come in step 4.
+// Real-time channels (group messages) come in step 4.
 
 import Fastify from "fastify";
 import cors from "@fastify/cors";
@@ -10,6 +10,9 @@ import { prisma } from "./db.js";
 import rateLimitPlugin from "./plugins/rate-limit.js";
 import authenticatePlugin from "./plugins/authenticate.js";
 import { authRoutes } from "./routes/auth.js";
+import { groupRoutes } from "./routes/groups.js";
+import { messageRoutes } from "./routes/messages.js";
+import { setIO } from "./realtime/socket.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? "127.0.0.1";
@@ -66,6 +69,9 @@ const server = fastify.server;
 
 // Auth routes
 await fastify.register(authRoutes, { prefix: "/api/auth" });
+// Group + Message routes
+await fastify.register(groupRoutes, { prefix: "/api/groups" });
+await fastify.register(messageRoutes, { prefix: "/api/groups" });
 // Socket.IO — JWT verified in `io.use` middleware
 const io = new SocketIOServer(server, {
   cors: {
@@ -88,12 +94,43 @@ io.use((socket, next) => {
   }
 });
 
+setIO(io);
+
 io.on("connection", (socket) => {
   fastify.log.info(
     { userId: socket.data.userId, username: socket.data.username },
     "socket connected",
   );
-  // Step 4: join group rooms, message:send, message:new events.
+
+  // Client tritt einer Group-Room bei. Server prüft Membership in DB,
+  // dann `socket.join("group:<id>")`. Antwortet mit ack.
+  socket.on(
+    "group:join",
+    async (
+      payload: { groupId?: string },
+      ack?: (resp: { ok: boolean; error?: string }) => void,
+    ) => {
+      const groupId = payload?.groupId;
+      if (!groupId) return ack?.({ ok: false, error: "groupId required" });
+      const member = await prisma.groupMember.findUnique({
+        where: { groupId_userId: { groupId, userId: socket.data.userId } },
+      });
+      if (!member) return ack?.({ ok: false, error: "not_a_member" });
+      await socket.join(`group:${groupId}`);
+      fastify.log.info(
+        { userId: socket.data.userId, groupId },
+        "socket joined group",
+      );
+      ack?.({ ok: true });
+    },
+  );
+
+  // Verlassen (z.B. wenn Frontend Group-View schließt)
+  socket.on("group:leave", async (payload: { groupId?: string }) => {
+    if (!payload?.groupId) return;
+    await socket.leave(`group:${payload.groupId}`);
+  });
+
   socket.on("disconnect", (reason) => {
     fastify.log.info({ userId: socket.data.userId, reason }, "socket disconnected");
   });
