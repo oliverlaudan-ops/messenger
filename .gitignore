@@ -1,0 +1,28 @@
+# Env / Secrets
+.env
+.env.local
+backend/.env
+frontend/.env
+
+# Node
+node_modules
+**/node_modules
+
+# Build-Output
+backend/dist
+**/dist
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode
+.idea
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Prisma
+backend/prisma/migrations/dev*

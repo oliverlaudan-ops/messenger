@@ -1,0 +1,142 @@
+// Prisma schema for messenger-backend
+// Database: PostgreSQL 16 (Alpine) — shared with prompt-factory-v2 on same host
+// Separate database: 'messenger' (not 'promptfactory')
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Users ---
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  groupMemberships GroupMember[]
+  ownedGroups     Group[]        @relation("GroupOwner")
+  sentMessages    Message[]      @relation("MessageAuthor")
+  pushTokens      PushToken[]
+  dmParticipations DmParticipant[]
+
+  @@index([email])
+  @@index([username])
+}
+
+// --- Groups ---
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  owner    User          @relation("GroupOwner", fields: [ownerId], references: [id])
+  members  GroupMember[]
+  messages Message[]
+
+  @@index([ownerId])
+}
+
+model GroupMember {
+  groupId  String
+  userId   String
+  role     GroupRole   @default(MEMBER)
+  joinedAt DateTime    @default(now())
+  lastReadAt DateTime?
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+}
+
+enum GroupRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// --- Group Messages ---
+
+model Message {
+  id        String   @id @default(cuid())
+  groupId   String
+  authorId  String
+  text      String
+  createdAt DateTime @default(now())
+
+  group  Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author User  @relation("MessageAuthor", fields: [authorId], references: [id])
+
+  @@index([groupId, createdAt])
+  @@index([authorId])
+}
+
+// --- Direct Messages ---
+
+model DmChat {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants DmParticipant[]
+  messages     DmMessage[]
+
+  @@index([updatedAt])
+}
+
+model DmParticipant {
+  chatId      String
+  userId      String
+  lastReadAt  DateTime?
+  joinedAt    DateTime  @default(now())
+
+  chat DmChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([chatId, userId])
+  @@index([userId])
+}
+
+model DmMessage {
+  id        String   @id @default(cuid())
+  chatId    String
+  authorId  String
+  text      String
+  createdAt DateTime @default(now())
+
+  chat DmChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@index([chatId, createdAt])
+}
+
+// --- Push Tokens (web-push) ---
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  lastUsed  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

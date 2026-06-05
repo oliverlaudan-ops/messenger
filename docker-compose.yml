@@ -1,0 +1,40 @@
+# Docker-Compose für messenger — Postgres-Service
+# Auf dem VPS teilt sich der messenger-backend Container einen Postgres
+# mit prompt-factory-v2. Hier in der Dev-Lokalsetup starten wir einen
+# eigenen Postgres. In Produktion wird DATABASE_URL auf den geteilten
+# Server zeigen (DB: 'messenger').
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: messenger-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-messenger}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-messenger}
+    volumes:
+      - messenger_pgdata:/var/lib/postgresql/data
+    ports:
+      # Nur localhost — kein externer Zugriff
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-messenger}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # TODO (Schritt 7): backend-Service hier hinzufügen
+  # backend:
+  #   build: ./backend
+  #   container_name: messenger-backend
+  #   restart: unless-stopped
+  #   env_file: ./backend/.env
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   ports:
+  #     - "127.0.0.1:3001:3001"
+
+volumes:
+  messenger_pgdata:

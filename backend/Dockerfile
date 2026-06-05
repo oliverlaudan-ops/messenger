@@ -1,0 +1,27 @@
+FROM node:20-alpine AS base
+WORKDIR /app
+
+# Install dependencies separately for layer caching
+FROM base AS deps
+COPY package.json package-lock.json* ./
+RUN npm install --no-audit --no-fund
+
+# Build TypeScript
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json package-lock.json* tsconfig.json ./
+COPY prisma ./prisma
+COPY src ./src
+RUN npx prisma generate
+RUN npx tsc -p tsconfig.json
+
+# Production image
+FROM base AS runtime
+ENV NODE_ENV=production
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
+COPY package.json ./
+EXPOSE 3001
+USER node
+CMD ["node", "dist/server.js"]
