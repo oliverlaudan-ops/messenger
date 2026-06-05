@@ -1,8 +1,8 @@
-# Docker-Compose für messenger — Postgres-Service
-# Auf dem VPS teilt sich der messenger-backend Container einen Postgres
-# mit prompt-factory-v2. Hier in der Dev-Lokalsetup starten wir einen
-# eigenen Postgres. In Produktion wird DATABASE_URL auf den geteilten
-# Server zeigen (DB: 'messenger').
+version: '3.8'
+
+# Production-Setup auf dem VPS.
+# - Eigener Postgres-Container (eigene DB 'messenger', getrennt von prompt-factory)
+# - Backend als Container auf 127.0.0.1:3001, von Nginx angesprochen
 
 services:
   db:
@@ -15,26 +15,32 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-messenger}
     volumes:
       - messenger_pgdata:/var/lib/postgresql/data
-    ports:
-      # Nur localhost — kein externer Zugriff
-      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-messenger}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # TODO (Schritt 7): backend-Service hier hinzufügen
-  # backend:
-  #   build: ./backend
-  #   container_name: messenger-backend
-  #   restart: unless-stopped
-  #   env_file: ./backend/.env
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #   ports:
-  #     - "127.0.0.1:3001:3001"
+  backend:
+    build: ./backend
+    container_name: messenger-backend
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      # Prisma 5.22 + Alpine 3.20+: auto-detection der libssl-Version ist
+      # kaputt, fällt auf "openssl-1.1.x" zurück. Mit explizitem Pfad
+      # lädt es die korrekte linux-musl-openssl-3.0.x binary.
+      PRISMA_QUERY_ENGINE_LIBRARY: /app/node_modules/.prisma/client/libquery_engine-linux-musl-openssl-3.0.x.so.node
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
 volumes:
   messenger_pgdata:
