@@ -7,6 +7,9 @@ import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
 import { Server as SocketIOServer } from "socket.io";
 import { prisma } from "./db.js";
+import rateLimitPlugin from "./plugins/rate-limit.js";
+import authenticatePlugin from "./plugins/authenticate.js";
+import { authRoutes } from "./routes/auth.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? "127.0.0.1";
@@ -40,6 +43,10 @@ await fastify.register(jwt, {
   secret: JWT_SECRET,
 });
 
+// Plugins
+await fastify.register(rateLimitPlugin);
+await fastify.register(authenticatePlugin);
+
 // Health route
 fastify.get("/api/health", async () => {
   // DB ping
@@ -57,6 +64,8 @@ fastify.get("/api/health", async () => {
 // HTTP server (for Socket.IO upgrade)
 const server = fastify.server;
 
+// Auth routes
+await fastify.register(authRoutes, { prefix: "/api/auth" });
 // Socket.IO — JWT verified in `io.use` middleware
 const io = new SocketIOServer(server, {
   cors: {
