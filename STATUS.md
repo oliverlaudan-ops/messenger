@@ -1,6 +1,6 @@
 # Status — messenger
 
-**Stand:** 2026-06-05 (letzte Session, J.A.R.V.I.S. + oliver)
+**Stand:** 2026-07-08 (Quick-Health-Check, J.A.R.V.I.S.) — Code-Stand seit 2026-06-05 unverändert
 
 **Live-URL:** https://messenger.future-pulse.de
 
@@ -48,7 +48,24 @@ DB:       Container "messenger-db" (postgres:16-alpine)
 
 ---
 
-## Was funktioniert end-to-end (getestet mit echtem Chromium)
+## Smoke-Test 2026-07-08
+
+| Check | Ergebnis |
+|-------|----------|
+| HTTPS-Erreichbarkeit | `HTTP 200` in 86 ms (gemessen via `curl -I`) |
+| TLS-Cert | Valide bis 2026-09-03 (Let's Encrypt) |
+| `messenger-backend` Container | Up 3 weeks, healthy, 127.0.0.1:3001 |
+| `messenger-db` (postgres:16-alpine) | Up 3 weeks, healthy |
+| DB-Volume (`messenger_messenger_pgdata`) | existiert, **kein Backup-Script aktiv** ⚠️ |
+| Letzter Code-Commit | `cf4f6f6` (2026-06-05, Session-Übergangs-Status) |
+| Letzte Code-Änderung davor | `0d63e75` (Prisma 5.22 + Alpine 3.20+ Fix) |
+| PWA-Icons | weiterhin fehlend (manifest verweist auf nicht-existente Dateien) |
+
+**Bewertung:** MVP stabil, keine offenen Incidents. 33 Tage ohne Code-Touch — das Repo ist auf Stand "live und funktional", nicht "live und in Entwicklung".
+
+---
+
+ (getestet mit echtem Chromium)
 
 1. Page-Load (HTTPS, Certbot-validiert)
 2. Register neuer User (E-Mail, Username, Passwort)
